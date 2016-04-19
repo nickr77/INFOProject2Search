@@ -1,0 +1,183 @@
+__author__ = 'Nick Roberts -- Steven Bock'
+
+import re
+import hashlib
+import mechanize
+import urlparse
+import robotparser
+from BeautifulSoup import BeautifulSoup
+from tqdm import tqdm
+import snowballstemmer
+browse = mechanize.Browser()
+#GLOBAL VARS
+baseUrl = "http://lyle.smu.edu/~fmoore/"
+robots = robotparser.RobotFileParser()
+robots.set_url(urlparse.urljoin(baseUrl, "robots.txt"))
+robots.read()
+urlList = [baseUrl]
+visitedUrls = [baseUrl]
+retrieveLimit = 0
+stopWords = ()
+outgoingLinks = []
+badLinks = []
+jpgAmount = 0
+words = {}
+docIDCounter = 1
+documentIDs = []
+duplicateDetect = []
+stemmer = snowballstemmer.stemmer("english")
+#END GLOBAL VARS
+#---------- INPUT -----------
+print "Welcome to the project 2 search engine"
+temp = input("Please enter page crawl limit: ")
+retrieveLimit = int(temp)
+stopFile = open("stopwords.txt", "r")
+lines = stopFile.read()
+stopWords = lines.split()
+
+
+print "Crawling Pages, please wait..."
+with tqdm(total=retrieveLimit) as progress:
+    for page in urlList:
+        if docIDCounter > retrieveLimit:
+            break #quits crawling if retrieval limit is reached
+        try:
+            #---------- Page Crawler (gets words and links from each page ---------
+            browse.open(page)
+            soup = BeautifulSoup(browse.response().read()) #if can't parse, assumed to be binary file or 404
+            hashTest = hashlib.md5(soup.getText()).digest()
+            if hashTest not in duplicateDetect:
+                duplicateDetect.append(hashTest)
+                wordsInPage = soup.getText().split()
+
+
+                for link in browse.links():
+                    tempURL = urlparse.urljoin(link.base_url, link.url)
+                    #BELOW: gets rid of duplicate urls resulting from index.html/index.htm
+                    if tempURL.endswith("index.html"):
+                        tempURL = tempURL.replace("index.html", "")
+                    elif tempURL.endswith("index.htm"):
+                        tempURL = tempURL.replace("index.htm", "")
+
+
+                    if tempURL not in urlList:
+                        if tempURL.startswith(baseUrl):
+                            if robots.can_fetch("*", "/" + link.url): #checks robots.txt, necessary because of unusual robots.txt location
+                                urlList.append(tempURL)
+                        else:
+                            if tempURL + "/" not in urlList:
+                                outgoingLinks.append(tempURL)
+
+                documentIDs.append((docIDCounter, page)) #if an exception hasn't happened by this point, it is safe to assign the docID
+                progress.update(1)
+                #-------------- WORD INDEXER ----------------#
+                for x in wordsInPage: #parse and stem words, add to dictionary
+                    x = x.replace(",", "") #removes commas before checking for stopwords
+                    x = re.sub("[^a-zA-Z]","", x) #removes non-alphabetic characters from words
+                    if x not in stopWords and len(x) > 0:
+                        temp = x
+                        temp = temp.lower()
+                        temp = stemmer.stemWord(temp)
+                        #print temp
+                        if temp not in words.keys():
+                            words[temp] = [docIDCounter]
+                        else:
+                            words[temp].append(docIDCounter)
+                docIDCounter += 1 #increments doc ID after successful parsing
+            #-------------- Binary File Handler ----------------#
+
+        except: #occurs if it is a binary file or non-existent file (this is needed for p2, below if statements are not
+            if page.endswith(".jpg"):
+                jpgAmount += 1 #not needed for p2
+            if browse.response().code == 404:
+                badLinks.append(page)
+
+############BEGIN PROJECT 2 Search Component  #################################
+
+
+
+
+
+
+
+
+
+
+
+
+#################################################################################
+
+
+
+
+
+
+
+
+
+
+
+#-------------- Word Freqency Calculator ----------------#
+
+# wordFreqency = []
+# for x in words.keys():
+#     wordFreqency.append((str(x), len(words[x])))
+# frequentWords = sorted(wordFreqency, key=lambda x: x[1]) #Sorts by last value in tuple (frequency count)
+# frequentWords.reverse()
+
+
+
+
+
+# #--------------- Console Output ------------------# NOT USED ANYMORE
+# print "Most Frequent Words: ", frequentWords[:20]
+# print "OUTGOING LINKS: ",outgoingLinks #for debugging, remove once complete
+# print "Good URLS: ",urlList
+# print "BAD LINKS: ",badLinks
+# print "JPEGS: ", jpgAmount
+# print "DOCIDS : ", documentIDs - WILL NEED THIS IN PROJECT 2
+
+# #---------FILE WRITING-------------#
+# out = open('urlList.txt', 'w') #page List
+# out.write('List of all urls visited (or at least attempted to):\n')
+# for x in urlList:
+#     out.write(x)
+#     out.write("\n")
+# out.close()
+#
+# out = open('outgoingLinks.txt', 'w') #outgoing links
+# out.write('List of outgoing links:\n')
+# for x in outgoingLinks:
+#     out.write(x)
+#     out.write("\n")
+# out.close()
+#
+# out = open('badLinks.txt', 'w') #bad links
+# out.write('List of bad links:\n')
+# for x in badLinks:
+#     out.write(x)
+#     out.write("\n")
+# out.close()
+#
+# out = open('jpegAmount.txt', 'w') #amount of jpegs
+# out.write("JPEG AMOUNT: ")
+# out.write(str(jpgAmount))
+# out.close()
+#
+# out = open('wordIndex.txt', 'w') #amount of jpegs
+# out.write("Word Index:\n")
+# for x in words.keys():
+#     out.write(x)
+#     out.write(": ")
+#     out.write(str(words[x]))
+#     out.write('\n')
+# out.close()
+#
+# out = open('frequentWords.txt', 'w')
+# out.write("20 most frequent words and amount of occurences:\n")
+# for x in frequentWords[:20]:
+#     out.write(x[0])
+#     out.write(": ")
+#     out.write(str(x[1]))
+#     out.write('\n')
+# out.close()
