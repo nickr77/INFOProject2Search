@@ -91,7 +91,8 @@ with tqdm(total=retrieveLimit) as progress:
                 jpgAmount += 1 #not needed for p2
             if browse.response().code == 404:
                 badLinks.append(page)
-
+    if (docIDCounter < retrieveLimit):
+        progress.update(retrieveLimit - docIDCounter + 1)
 ############BEGIN PROJECT 2 Search Component  #################################
 
 
