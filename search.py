@@ -44,30 +44,35 @@ with tqdm(total=retrieveLimit) as progress:
             break #quits crawling if retrieval limit is reached
         try:
             #---------- Page Crawler (gets words and links from each page ---------
+            soup = ""
             browse.open(page)
-            soup = BeautifulSoup(browse.response().read()) #if can't parse, assumed to be binary file or 404
-            hashTest = hashlib.md5(soup.getText().encode('utf-8')).hexdigest()
+            if page.endswith(".txt"):
+                soup = browse.response().read()
+            else:
+                soup = BeautifulSoup(browse.response().read()) #if can't parse, assumed to be binary file or 404
+                soup = soup.getText()
+            hashTest = hashlib.md5(soup.encode('utf-8')).hexdigest()
             if hashTest not in duplicateDetect:
                 duplicateDetect.append(hashTest)
-                wordsInPage = soup.getText().split()
+                wordsInPage = soup.split()
+                if not page.endswith(".txt"):
+
+                    for link in browse.links():
+                        tempURL = urlparse.urljoin(link.base_url, link.url)
+                        #BELOW: gets rid of duplicate urls resulting from index.html/index.htm
+                        if tempURL.endswith("index.html"):
+                            tempURL = tempURL.replace("index.html", "")
+                        elif tempURL.endswith("index.htm"):
+                            tempURL = tempURL.replace("index.htm", "")
 
 
-                for link in browse.links():
-                    tempURL = urlparse.urljoin(link.base_url, link.url)
-                    #BELOW: gets rid of duplicate urls resulting from index.html/index.htm
-                    if tempURL.endswith("index.html"):
-                        tempURL = tempURL.replace("index.html", "")
-                    elif tempURL.endswith("index.htm"):
-                        tempURL = tempURL.replace("index.htm", "")
-
-
-                    if tempURL not in urlList:
-                        if tempURL.startswith(baseUrl):
-                            if robots.can_fetch("*", "/" + link.url): #checks robots.txt, necessary because of unusual robots.txt location
-                                urlList.append(tempURL)
-                        else:
-                            if tempURL + "/" not in urlList:
-                                outgoingLinks.append(tempURL)
+                        if tempURL not in urlList:
+                            if tempURL.startswith(baseUrl):
+                                if robots.can_fetch("*", "/" + link.url): #checks robots.txt, necessary because of unusual robots.txt location
+                                    urlList.append(tempURL)
+                            else:
+                                if tempURL + "/" not in urlList:
+                                    outgoingLinks.append(tempURL)
 
                 documentIDs.append((docIDCounter, page)) #if an exception hasn't happened by this point, it is safe to assign the docID
                 progress.update(1)
@@ -95,6 +100,7 @@ with tqdm(total=retrieveLimit) as progress:
                 duplicateCount += 1
 
         except: #occurs if it is a binary file or non-existent file (this is needed for p2, below if statements are not
+            #print page
             if page.endswith(".jpg"):
                 jpgAmount += 1 #not needed for p2
             if browse.response().code == 404:
