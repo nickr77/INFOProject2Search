@@ -25,6 +25,7 @@ words = {}
 docIDCounter = 1
 documentIDs = []
 duplicateDetect = []
+duplicateCount = 0
 stemmer = snowballstemmer.stemmer("english")
 #END GLOBAL VARS
 #---------- INPUT -----------
@@ -45,7 +46,7 @@ with tqdm(total=retrieveLimit) as progress:
             #---------- Page Crawler (gets words and links from each page ---------
             browse.open(page)
             soup = BeautifulSoup(browse.response().read()) #if can't parse, assumed to be binary file or 404
-            hashTest = hashlib.md5(soup.getText()).digest()
+            hashTest = hashlib.md5(soup.getText().encode('utf-8')).hexdigest()
             if hashTest not in duplicateDetect:
                 duplicateDetect.append(hashTest)
                 wordsInPage = soup.getText().split()
@@ -80,11 +81,18 @@ with tqdm(total=retrieveLimit) as progress:
                         temp = stemmer.stemWord(temp)
                         #print temp
                         if temp not in words.keys():
-                            words[temp] = [docIDCounter]
+                            words[temp] = [(docIDCounter, 1)]
                         else:
-                            words[temp].append(docIDCounter)
+                            tempPageList = [x[0] for x in words[temp]]
+                            if docIDCounter in tempPageList:
+                                tempIndex = tempPageList.index(docIDCounter)
+                                words[temp][tempIndex] = (docIDCounter, words[temp][tempIndex][1] + 1)
+                            else:
+                                words[temp].append((docIDCounter,1))
                 docIDCounter += 1 #increments doc ID after successful parsing
             #-------------- Binary File Handler ----------------#
+            else:
+                duplicateCount += 1
 
         except: #occurs if it is a binary file or non-existent file (this is needed for p2, below if statements are not
             if page.endswith(".jpg"):
@@ -120,15 +128,23 @@ with tqdm(total=retrieveLimit) as progress:
 
 #-------------- Word Freqency Calculator ----------------#
 
-# wordFreqency = []
-# for x in words.keys():
-#     wordFreqency.append((str(x), len(words[x])))
-# frequentWords = sorted(wordFreqency, key=lambda x: x[1]) #Sorts by last value in tuple (frequency count)
-# frequentWords.reverse()
-
-
-
-
+wordFreqency = []
+for x in words.keys():
+    totalTimes = 0
+    for y in words[x]:
+        totalTimes += y[1]
+    wordFreqency.append((str(x), totalTimes))
+frequentWords = sorted(wordFreqency, key=lambda x: x[1]) #Sorts by last value in tuple (frequency count)
+frequentWords.reverse()
+for x in frequentWords:
+    print x
+print duplicateDetect
+print badLinks
+print documentIDs
+print duplicateCount
+# for x in words:
+#     print x, " ", words[x]
+print urlList
 
 # #--------------- Console Output ------------------# NOT USED ANYMORE
 # print "Most Frequent Words: ", frequentWords[:20]
