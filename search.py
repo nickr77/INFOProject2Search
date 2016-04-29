@@ -8,6 +8,7 @@ import robotparser
 from BeautifulSoup import BeautifulSoup
 from tqdm import tqdm
 import snowballstemmer
+import math
 browse = mechanize.Browser()
 #GLOBAL VARS
 baseUrl = "http://lyle.smu.edu/~fmoore/"
@@ -35,6 +36,82 @@ retrieveLimit = int(temp)
 stopFile = open("stopwords.txt", "r")
 lines = stopFile.read()
 stopWords = lines.split()
+
+def rankResults(query, documentsByWord, docsToSearch):
+    resultList = []
+    termDocMatrix =  [] #words will be in order typed in query
+    for document in docsToSearch:
+        tempList = []
+        for word in query:
+            temp = 0
+            for x in documentsByWord[x]: #looking at tuples
+
+                if x[0] == document:
+                    temp = x[1]
+            tempList.append(temp)
+        resultList.append(tempList)
+
+
+
+
+
+def union(documents):
+    union = []
+    for x in documents.keys():
+        for y in documents[x]:
+            union.append(y[0])
+    return set(union)
+
+def idf(word):
+    numberOfDocs = len(documentIDs)
+    numberOfAppearances = len(words[word])
+    idf = math.log((numberOfDocs/(1 + numberOfAppearances)), 2)
+    return idf
+
+
+
+
+def getDocs(query):
+    finalList = {}
+    for word in query:
+        tempList = []
+        for x in words[word]:
+            tempList.append(x)
+        finalList[word] = tempList
+    return finalList
+
+
+
+def search(query):
+    wordsToSearch = query.split()
+    stemmedQuery = []
+    idfDict = {}
+
+    for x in wordsToSearch:
+        stemmedQuery.append(stemmer.stemWord(x))
+
+    finalQuery = []
+    for x in stemmedQuery:
+        if x in words.keys():
+            finalQuery.append(x)
+        else:
+            print x, " was not not found"
+    if len(finalQuery) == 0:
+        print "No results"
+        return;
+    print "Searching for: ",
+    for x in finalQuery:
+        print x, " ",
+        idfDict[x] = idf(x)
+    print ""
+    documentsByWord = getDocs(finalQuery)
+    docsToSearch = union(documentsByWord)
+    rankResults(finalQuery, documentsByWord, docsToSearch)
+
+
+
+
+
 
 
 print "Crawling Pages, please wait..."
@@ -110,6 +187,16 @@ with tqdm(total=retrieveLimit) as progress:
 ############BEGIN PROJECT 2 Search Component  #################################
 
 
+print "Web Crawling Complete, starting search engine"
+searchQuery = ""
+while True:
+    searchQuery = raw_input("Please enter query words (separated by spaces) or type Quit: ")
+    searchQuery = str(searchQuery)
+    searchQuery = searchQuery.lower()
+    if (searchQuery == "quit"):
+        print "Goodbye!"
+        break
+    search(searchQuery)
 
 
 
@@ -134,23 +221,23 @@ with tqdm(total=retrieveLimit) as progress:
 
 #-------------- Word Freqency Calculator ----------------#
 
-wordFreqency = []
-for x in words.keys():
-    totalTimes = 0
-    for y in words[x]:
-        totalTimes += y[1]
-    wordFreqency.append((str(x), totalTimes))
-frequentWords = sorted(wordFreqency, key=lambda x: x[1]) #Sorts by last value in tuple (frequency count)
-frequentWords.reverse()
-for x in frequentWords:
-    print x
-print duplicateDetect
-print badLinks
-print documentIDs
-print duplicateCount
-# for x in words:
-#     print x, " ", words[x]
-print urlList
+# wordFreqency = []
+# for x in words.keys():
+#     totalTimes = 0
+#     for y in words[x]:
+#         totalTimes += y[1]
+#     wordFreqency.append((str(x), totalTimes))
+# frequentWords = sorted(wordFreqency, key=lambda x: x[1]) #Sorts by last value in tuple (frequency count)
+# frequentWords.reverse()
+# for x in frequentWords:
+#     print x
+# print duplicateDetect
+# print badLinks
+# print documentIDs
+# print duplicateCount
+# # for x in words:
+# #     print x, " ", words[x]
+# print urlList
 
 # #--------------- Console Output ------------------# NOT USED ANYMORE
 # print "Most Frequent Words: ", frequentWords[:20]
