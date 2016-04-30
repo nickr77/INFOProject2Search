@@ -37,19 +37,64 @@ stopFile = open("stopwords.txt", "r")
 lines = stopFile.read()
 stopWords = lines.split()
 
-def rankResults(query, documentsByWord, docsToSearch):
-    resultList = []
+def cosSim(doc, queryLen, docLen, queryIdf):
+    temp = 0
+    tempIndex = 0
+    for x in doc:
+        temp += (x*queryIdf[tempIndex])
+        tempIndex += 1
+    cosSimNumber = temp / (docLen * queryLen)
+    return cosSimNumber
+
+
+def rankResults(query, documentsByWord, docsToSearch, idfDict):
+    cosSimList = []
+    querylen = 0
+    queryIdf = []
+    docLengths = []
     termDocMatrix =  [] #words will be in order typed in query
     for document in docsToSearch:
         tempList = []
         for word in query:
             temp = 0
-            for x in documentsByWord[x]: #looking at tuples
+            for x in documentsByWord[word]: #looking at tuples
 
                 if x[0] == document:
                     temp = x[1]
+                    temp = temp * idfDict[word]
             tempList.append(temp)
         termDocMatrix.append(tempList)
+
+
+    for word in query:
+        querylen += pow(idfDict[word], 2)
+        queryIdf.append(idfDict[word])
+    querylen = math.sqrt(querylen)
+    for doc in termDocMatrix:
+        temp = 0
+        for x in doc:
+            temp = temp + pow(x, 2)
+        temp = math.sqrt(temp)
+        docLengths.append(temp)
+    # print termDocMatrix
+    # print docsToSearch
+    # print queryIdf
+    # print querylen
+    # print docLengths
+    docLenIndex = 0
+    for x in termDocMatrix:
+        cosSimList.append(cosSim(x, querylen, docLengths[docLenIndex], queryIdf))
+        docLenIndex += 1
+    resultList = zip(cosSimList, docsToSearch)
+    resultList.sort()
+    resultList.reverse()
+    resultCount = 1
+    resultLimit = 5
+    for x in resultList:
+        print resultCount, ". ", docIdDict[x[1]]
+        resultCount += 1
+        if resultCount >= resultLimit:
+            break
 
 
 
@@ -65,7 +110,7 @@ def union(documents):
 def idf(word):
     numberOfDocs = len(documentIDs)
     numberOfAppearances = len(words[word])
-    idf = math.log((numberOfDocs/(1 + numberOfAppearances)), 2)
+    idf = math.log((numberOfDocs/(numberOfAppearances)), 2)
     return idf
 
 
@@ -96,6 +141,7 @@ def search(query):
             finalQuery.append(x)
         else:
             print x, " was not not found"
+    finalQuery = set(finalQuery)
     if len(finalQuery) == 0:
         print "No results"
         return;
@@ -106,7 +152,7 @@ def search(query):
     print ""
     documentsByWord = getDocs(finalQuery)
     docsToSearch = union(documentsByWord)
-    rankResults(finalQuery, documentsByWord, docsToSearch)
+    rankResults(finalQuery, documentsByWord, docsToSearch, idfDict)
 
 
 
@@ -185,8 +231,8 @@ with tqdm(total=retrieveLimit) as progress:
     if (docIDCounter < retrieveLimit):
         progress.update(retrieveLimit - docIDCounter + 1)
 ############BEGIN PROJECT 2 Search Component  #################################
-
-
+docIdDict = dict(documentIDs)
+print ""
 print "Web Crawling Complete, starting search engine"
 searchQuery = ""
 while True:
