@@ -91,9 +91,9 @@ def rankResults(query, documentsByWord, docsToSearch, idfDict):
     resultCount = 1
     resultLimit = 5
     for x in resultList:
-        print resultCount, ". ", docIdDict[x[1]]
+        print resultCount, ". ", docIdDict[x[1]], " ; Similarity: ", x[0]
         resultCount += 1
-        if resultCount >= resultLimit:
+        if resultCount > resultLimit:
             break
 
 
