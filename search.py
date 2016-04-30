@@ -49,7 +49,7 @@ def rankResults(query, documentsByWord, docsToSearch):
                 if x[0] == document:
                     temp = x[1]
             tempList.append(temp)
-        resultList.append(tempList)
+        termDocMatrix.append(tempList)
 
 
 
